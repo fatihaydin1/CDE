@@ -47,7 +47,7 @@ function [ param ] = setDefaultValues( param )
     end
     
     if TF(2) == 0
-            param.NumOfNeighbors = 5;
+        param.NumOfNeighbors = 5;
     end
     
     if TF(3) == 0
