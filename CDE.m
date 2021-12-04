@@ -1,24 +1,62 @@
 %% Class-driven Dimension Embedding (CDE)
-function [ mappedX ] = CDE( X, Y, distanceMetric, numOfNeighbors, weightingFunc, TestIndices )
+function [ mappedX ] = CDE( X, Y, varargin )
 %   Name                        Value
 %
 %   'X'                            Input data
 %
 %   'Y'                            Class labels
 %
+%   The struct param contains the following fields:
 %   'DistanceMetric'        This parameter specifies the metric that may be used to measure the distances between the data points. 
 %
-%   'numOfNeighbors'      The number of neighbors of a point
+%   'NumOfNeighbors'      The number of neighbors of a point
 %
-%   'weightingFunc'          This parameter specifies the weighting method. The values of the parameter are as follows: 'ln', 'lnln', 'cdf', 'adaptive'
+%   'WeightingFunc'          This parameter specifies the weighting method. The values of the parameter are as follows: 'ln', 'lnln', 'cdf', 'adaptive'
 %
 %   'TestIndices'              This parameter specifies the indices of the test instances in the data set (for cross-validation).
 %
+    
+    narginchk(2, 3);
+    
+    if nargin == 2
+        param = struct;
+        param = setDefaultValues(param);
+    elseif nargin == 3
+        if ~isstruct(varargin{1})
+            error('The param must be a struct');
+        end
+        param = setDefaultValues(varargin{1});
+    end
 
-    Y(TestIndices) = '<undefined>';
-    [ idx, dist ] = findNeighbors( X, Y, distanceMetric, numOfNeighbors );
-    [ weights ] = generateWeights( weightingFunc, dist, numOfNeighbors );
+    Y(param.TestIndices) = '<undefined>';
+    [ idx, dist ] = findNeighbors( X, Y, param.DistanceMetric, param.NumOfNeighbors );
+    [ weights ] = generateWeights( param.WeightingFunc, dist, param.NumOfNeighbors );
     mappedX = transform(idx, weights, Y);
+end
+
+
+
+%%
+function [ param ] = setDefaultValues( param )
+
+    field = {'DistanceMetric', 'NumOfNeighbors', 'WeightingFunc', 'TestIndices'};
+    TF = isfield(param, field);
+    
+    if TF(1) == 0
+        param.DistanceMetric = 'cityblock';
+    end
+    
+    if TF(2) == 0
+            param.NumOfNeighbors = 5;
+    end
+    
+    if TF(3) == 0
+        param.WeightingFunc = 'adaptive';
+    end
+    
+    if TF(4) == 0
+        param.TestIndices = [];
+    end
 end
 
 
