@@ -2,31 +2,32 @@
 clc;
 
 % Select a data set
-dataset = load('ovariancancer');
+dataset = load('Ionosphere');
 fns = fieldnames(dataset);
 [ X, Y ] = divideTable( dataset.(fns{1}) );
 
 % Set the parameters of CDE
-DistanceMetric = 'cityblock';
-numOfNeighbors = 5;
-weightingFunc = 'adaptive';
+param.DistanceMetric = 'cityblock';
+param.NumOfNeighbors = 5;
+param.WeightingFunc = 'adaptive';
 
 % Perform an experiment with 10-fold cross-validation
-Accuracy = demo1( X, Y, 'CART', DistanceMetric, numOfNeighbors, weightingFunc );
+Accuracy = demo1( X, Y, 'CART', param );
 
 % Find the embeddings of input data
-mappedX = demo2( X, Y, DistanceMetric, numOfNeighbors, weightingFunc );
+mappedX1 = demo2( X, Y, param );
+
+% Find the embeddings of input data
+mappedX2 = demo3( X, Y );
 
 clear dataset;
 clear fns;
-clear DistanceMetric;
-clear numOfNeighbors;
-clear weightingFunc;
+clear param;
 
 
 
 %% Perform an experiment with 10-fold cross-validation
-function [ acc ] = demo1( X, Y, classifier, DistanceMetric, numOfNeighbors, weightingFunc )
+function [ acc ] = demo1( X, Y, classifier, param )
 
     predictions = repmat(Y, 1, 2);
     indices = crossvalind('Kfold', Y, 10);
@@ -36,7 +37,9 @@ function [ acc ] = demo1( X, Y, classifier, DistanceMetric, numOfNeighbors, weig
         test = (indices == i);
         train = ~test;
                 
-        mappedX = CDE(X, Y, DistanceMetric, numOfNeighbors, weightingFunc, test);
+        param.TestIndices = test;
+        mappedX = CDE(X, Y, param);
+        
         trainX = mappedX(train,:);
         testX = mappedX(test,:);
         trainY = Y(train,:);
@@ -63,9 +66,21 @@ end
 
 
 %% Find the embeddings of input data
-function [ mappedX ] = demo2( X, Y, DistanceMetric, numOfNeighbors, weightingFunc )
+function [ mappedX ] = demo2( X, Y, param )
 
-    mappedX = CDE(X, Y, DistanceMetric, numOfNeighbors, weightingFunc, []);
+    mappedX = CDE(X, Y, param);
+end
+
+
+
+%% Find the embeddings of input data
+function [ mappedX ] = demo3( X, Y )
+
+    param.DistanceMetric = 'infogain';
+    param.NumOfNeighbors = 3;
+    param.WeightingFunc = 'lnln';
+    
+    mappedX = CDE(X, Y, param);
 end
 
 
