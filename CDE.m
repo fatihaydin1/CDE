@@ -23,40 +23,15 @@ function [ mappedX ] = CDE( X, Y, varargin )
         param = setDefaultValues(param);
     elseif nargin == 3
         if ~isstruct(varargin{1})
-            error('The param must be a struct');
+            error('The third parameter must be a struct');
         end
         param = setDefaultValues(varargin{1});
     end
 
     Y(param.TestIndices) = '<undefined>';
-    [ idx, dist ] = findNeighbors( X, Y, param.DistanceMetric, param.NumOfNeighbors );
+    [ idx, dist ] = findNeighbors( X, Y, param );
     [ weights ] = generateWeights( param.WeightingFunc, dist, param.NumOfNeighbors );
     mappedX = transform(idx, weights, Y);
-end
-
-
-
-%%
-function [ param ] = setDefaultValues( param )
-
-    field = {'DistanceMetric', 'NumOfNeighbors', 'WeightingFunc', 'TestIndices'};
-    TF = isfield(param, field);
-    
-    if TF(1) == 0
-        param.DistanceMetric = 'cityblock';
-    end
-    
-    if TF(2) == 0
-        param.NumOfNeighbors = 5;
-    end
-    
-    if TF(3) == 0
-        param.WeightingFunc = 'adaptive';
-    end
-    
-    if TF(4) == 0
-        param.TestIndices = [];
-    end
 end
 
 
@@ -86,15 +61,15 @@ end
 
 
 %% Find the neighbors
-function [ idx, dist ] = findNeighbors( X, Y, distanceMetric, numOfNeighbors )
+function [ idx, dist ] = findNeighbors( X, Y, param )
 
-    if strcmp(distanceMetric, 'infogain')
+    if strcmp(param.DistanceMetric, 'infogain')
         % Define the distance metric based on the information gain.
         M_IGDist = @(x,Z,g)sum(abs(x-Z).^g,2);
         gains = InformationGain(X, Y)';
-        [idx, dist] = knnsearch(X, X, 'Distance',@(x,Z)M_IGDist(x,Z,gains), 'K', numOfNeighbors + 1);
+        [idx, dist] = knnsearch(X, X, 'Distance',@(x,Z)M_IGDist(x,Z,gains), 'K', param.NumOfNeighbors + 1);
     else
-        [idx, dist] = knnsearch(X, X, 'Distance',distanceMetric, 'K', numOfNeighbors + 1);
+        [idx, dist] = knnsearch(X, X, 'Distance',param.DistanceMetric, 'K', param.NumOfNeighbors + 1);
     end
     
     % Remove the first column since it is the distance of a point to itself
@@ -127,64 +102,27 @@ end
 
 
 
-%% Compute the entropy of the class, i.e. Compute H(Y)
-function [ H ] = H_Theorem( p )
-    % Create a frequency table
-    % The first column in 'T' contains the unique string values in 'p'.
-    % The second is the number of instances of each value.
-    % The last column contains the percentage of each value.
-    T = tabulate(p);
-    
-    % Get a vector including the number of instances per class.
-    m = cell2mat(T(:,2));
-    
-    % Compute probabilities per class.
-    probPerClass = m ./ sum(m);
-    
-    % Ignore bins with 0 probability such as 0*log(0)=0.
-    probPerClass = probPerClass(probPerClass > 0);
-    
-    % Compute Boltzmann's H Theorem.
-    H = -sum(probPerClass .* log2(probPerClass));
-end
+%%
+function [ param ] = setDefaultValues( param )
 
-
-
-%% Compute the entropy per attributes, i.e. Compute H(Y|X)
-function [ eoa ] = entropyOfAttribute( X, outcome )
-    eoa = 0;
-    % It partitions the values in 'X' into bins, and is an array of the
-    % same size as 'X' whose elements are the 'BIN' indices for the
-    % corresponding elements in 'X'.
-    [~, ~, BIN] = histcounts(X, 'BinMethod', 'sturges');
+    field = {'DistanceMetric', 'NumOfNeighbors', 'WeightingFunc', 'TestIndices'};
+    TF = isfield(param, field);
     
-    for c = unique(BIN)'
-        idx = (BIN == c);
-        p = sum(idx) / length(X);
-        if p > 0
-            eoa = eoa + p * H_Theorem(outcome(idx));
-        end
-    end  
-end
-
-
-
-%% Compute the Information Gain per features, i.e. Compute IG = H(Y) - H(Y|X)
-function [ gains ] = InformationGain( features, outcome )
+    if TF(1) == 0
+        param.DistanceMetric = 'cityblock';
+    end
     
-    % Remove the test instances from the data set
-    features(isundefined(outcome),:) = [];
-    outcome(isundefined(outcome)) = [];
-
-    % Compute the entropy of the class 
-    outcomeEntropy = H_Theorem(outcome);
+    if TF(2) == 0
+        param.NumOfNeighbors = 5;
+    end
     
-    d = size(features, 2);
+    if TF(3) == 0
+        param.WeightingFunc = 'adaptive';
+    end
     
-    % Compute entropy per features.
-    gains = zeros(d, 1);
-    for i = 1 : d
-        gains(i) = outcomeEntropy - entropyOfAttribute(features(:,i), outcome);
+    if TF(4) == 0
+        param.TestIndices = [];
     end
 end
+
 
